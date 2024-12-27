@@ -1,6 +1,9 @@
 package main
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+)
 
 func main() {
 	handler := http.NewServeMux()
@@ -11,5 +14,7 @@ func main() {
 		Addr:    ":8080",
 		Handler: handler,
 	}
-	server.ListenAndServe()
+
+	log.Printf("Server started at %s", server.Addr)
+	log.Fatal(server.ListenAndServe())
 }
