@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -11,11 +10,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/thihxm/Chirpy/internal/config"
 	"github.com/thihxm/Chirpy/internal/database"
-	"github.com/thihxm/Chirpy/internal/utils"
-)
-
-const (
-	MaxChirpLength = 140
 )
 
 func main() {
@@ -47,37 +41,8 @@ func main() {
 		Handler: mux,
 	}
 
-	mux.Handle("POST /api/validate_chirp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		type parameters struct {
-			Body string `json:"body"`
-		}
-
-		decoder := json.NewDecoder(r.Body)
-		params := parameters{}
-		err := decoder.Decode(&params)
-		if err != nil {
-			log.Printf("Error decoding parameters: %v", err)
-			utils.RespondWithError(w, http.StatusBadRequest, "Invalid request")
-			return
-		}
-
-		if len(params.Body) > MaxChirpLength {
-			utils.RespondWithError(w, http.StatusBadRequest, "Chirp is too long")
-			return
-		}
-
-		type returnVals struct {
-			// the key will be the name of struct field unless you give it an explicit JSON tag
-			CleanedBody string `json:"cleaned_body"`
-		}
-
-		resBody := returnVals{
-			CleanedBody: utils.RemoveProfanity(params.Body),
-		}
-		utils.RespondWithJSON(w, http.StatusOK, resBody)
-	}))
-
 	mux.Handle("POST /api/users", createUserHandler(cfg))
+	mux.Handle("POST /api/chirps", createChirpHandler(cfg))
 
 	log.Printf("Server started at %s", server.Addr)
 	log.Fatal(server.ListenAndServe())
