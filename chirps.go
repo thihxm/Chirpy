@@ -83,3 +83,23 @@ func getChirpsHandler(cfg *config.ApiConfig) http.Handler {
 		utils.RespondWithJSON(w, http.StatusOK, chirps)
 	})
 }
+
+func getChirpByIDHandler(cfg *config.ApiConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawID := r.PathValue("chirpID")
+
+		id, err := uuid.Parse(rawID)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid chirp ID")
+			return
+		}
+
+		chirp, err := cfg.Queries.GetChirpByID(r.Context(), id)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusNotFound, "Chirp not found")
+			return
+		}
+
+		utils.RespondWithJSON(w, http.StatusOK, Chirp(chirp))
+	})
+}
