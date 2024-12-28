@@ -43,6 +43,7 @@ func main() {
 
 	mux.Handle("POST /api/users", createUserHandler(cfg))
 	mux.Handle("POST /api/chirps", createChirpHandler(cfg))
+	mux.Handle("GET /api/chirps", getChirpsHandler(cfg))
 
 	log.Printf("Server started at %s", server.Addr)
 	log.Fatal(server.ListenAndServe())

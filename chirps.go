@@ -65,3 +65,21 @@ func createChirpHandler(cfg *config.ApiConfig) http.Handler {
 		utils.RespondWithJSON(w, http.StatusCreated, Chirp(chirp))
 	})
 }
+
+func getChirpsHandler(cfg *config.ApiConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawChirps, err := cfg.Queries.GetChirps(r.Context())
+		if err != nil {
+			log.Printf("Error getting chirps: %v", err)
+			utils.RespondWithError(w, http.StatusInternalServerError, "Internal Server Error")
+			return
+		}
+
+		chirps := make([]Chirp, len(rawChirps))
+		for i, chirp := range rawChirps {
+			chirps[i] = Chirp(chirp)
+		}
+
+		utils.RespondWithJSON(w, http.StatusOK, chirps)
+	})
+}
