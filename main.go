@@ -1,47 +1,53 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"strings"
-	"sync/atomic"
+	"os"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
+	"github.com/thihxm/Chirpy/internal/config"
+	"github.com/thihxm/Chirpy/internal/database"
+	"github.com/thihxm/Chirpy/internal/utils"
 )
 
 const (
 	MaxChirpLength = 140
 )
 
-var profaneWords = map[string]bool{
-	"kerfuffle": true,
-	"sharbert":  true,
-	"fornax":    true,
-}
-
-type apiConfig struct {
-	fileserverHits atomic.Int32
-}
-
 func main() {
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+		return
+	}
+	dbQueries := database.New(db)
+
 	mux := http.NewServeMux()
-	apiCfg := &apiConfig{}
+	cfg := &config.ApiConfig{
+		Queries: dbQueries,
+	}
 
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
-	mux.HandleFunc("POST /admin/reset", apiCfg.reset)
-	mux.HandleFunc("GET /admin/metrics", apiCfg.metrics)
-	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(".")))))
+	mux.HandleFunc("POST /admin/reset", cfg.Reset)
+	mux.HandleFunc("GET /admin/metrics", cfg.Metrics)
+	mux.Handle("/app/", cfg.MiddlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(".")))))
 
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: mux,
 	}
 
-	mux.Handle("/api/validate_chirp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("POST /api/validate_chirp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		type parameters struct {
 			Body string `json:"body"`
 		}
@@ -51,12 +57,12 @@ func main() {
 		err := decoder.Decode(&params)
 		if err != nil {
 			log.Printf("Error decoding parameters: %v", err)
-			respondWithError(w, http.StatusBadRequest, "Invalid request")
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid request")
 			return
 		}
 
 		if len(params.Body) > MaxChirpLength {
-			respondWithError(w, http.StatusBadRequest, "Chirp is too long")
+			utils.RespondWithError(w, http.StatusBadRequest, "Chirp is too long")
 			return
 		}
 
@@ -66,69 +72,13 @@ func main() {
 		}
 
 		resBody := returnVals{
-			CleanedBody: removeProfanity(params.Body),
+			CleanedBody: utils.RemoveProfanity(params.Body),
 		}
-		respondWithJSON(w, http.StatusOK, resBody)
+		utils.RespondWithJSON(w, http.StatusOK, resBody)
 	}))
+
+	mux.Handle("POST /api/users", createUserHandler(cfg))
 
 	log.Printf("Server started at %s", server.Addr)
 	log.Fatal(server.ListenAndServe())
-}
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits.Add(1)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (cfg *apiConfig) metrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf(
-		`<html>
-        <body>
-            <h1>Welcome, Chirpy Admin</h1>
-            <p>Chirpy has been visited %d times!</p>
-        </body>
-        </html>`,
-		cfg.fileserverHits.Load())),
-	)
-}
-
-func (cfg *apiConfig) reset(w http.ResponseWriter, r *http.Request) {
-	cfg.fileserverHits.Store(0)
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
-
-func respondWithError(w http.ResponseWriter, code int, msg string) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(code)
-	w.Write([]byte(msg))
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		log.Printf("Error marshalling response JSON: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	w.Write(data)
-}
-
-func removeProfanity(body string) string {
-	words := strings.Split(body, " ")
-	for i, word := range words {
-		lowerCaseWord := strings.ToLower(word)
-		if profaneWords[lowerCaseWord] {
-			words[i] = "****"
-		}
-	}
-	return strings.Join(words, " ")
 }
