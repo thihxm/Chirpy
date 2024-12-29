@@ -60,3 +60,42 @@ func createUserHandler(cfg *config.ApiConfig) http.Handler {
 		})
 	})
 }
+
+func loginHandler(cfg *config.ApiConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		type parameters struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		err := decoder.Decode(&params)
+		if err != nil {
+			log.Printf("Error decoding parameters: %v", err)
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid request")
+			return
+		}
+
+		user, err := cfg.Queries.GetUserByEmail(r.Context(), params.Email)
+		if err != nil {
+			log.Printf("Error getting user: %v", err)
+			utils.RespondWithError(w, http.StatusNotFound, "User not found")
+			return
+		}
+
+		err = auth.ComparePassword(user.HashedPassword, params.Password)
+		if err != nil {
+			log.Printf("Error comparing password: %v", err)
+			utils.RespondWithError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		utils.RespondWithJSON(w, http.StatusOK, User{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		})
+	})
+}
