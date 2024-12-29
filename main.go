@@ -45,6 +45,7 @@ func main() {
 	}
 
 	mux.Handle("POST /api/users", createUserHandler(cfg))
+	mux.Handle("PUT /api/users", middlewareIsAuthenticated(cfg, updateUserHandler(cfg)))
 	mux.Handle("POST /api/chirps", middlewareIsAuthenticated(cfg, createChirpHandler(cfg)))
 	mux.Handle("GET /api/chirps", getChirpsHandler(cfg))
 	mux.Handle("GET /api/chirps/{chirpID}", getChirpByIDHandler(cfg))
