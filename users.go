@@ -13,11 +13,6 @@ import (
 	"github.com/thihxm/Chirpy/internal/utils"
 )
 
-const (
-	DEFAULT_TOKEN_EXPIRATION_TIME = 1 * time.Hour
-	MAX_TOKEN_EXPIRATION_TIME     = 1 * time.Hour
-)
-
 type User struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
