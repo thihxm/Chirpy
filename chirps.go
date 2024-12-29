@@ -44,15 +44,11 @@ func createChirpHandler(cfg *config.ApiConfig) http.Handler {
 			return
 		}
 
-		userID := r.Context().Value(userIDKey).(*uuid.UUID)
-		if userID == nil {
-			utils.RespondWithError(w, http.StatusUnauthorized, "Unauthorized")
-			return
-		}
+		userID := r.Context().Value(userIDKey).(uuid.UUID)
 
 		chirp, err := cfg.Queries.CreateChirp(r.Context(), database.CreateChirpParams{
 			Body:   utils.RemoveProfanity(params.Body),
-			UserID: *userID,
+			UserID: userID,
 		})
 		if err != nil {
 			log.Printf("Error creating user: %v", err)

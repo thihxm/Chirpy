@@ -34,6 +34,7 @@ func middlewareIsAuthenticated(cfg *config.ApiConfig, next http.Handler) http.Ha
 
 		userID, err := auth.ValidateJWT(token, cfg.AuthSecret)
 		if err != nil {
+			utils.RespondWithError(w, http.StatusUnauthorized, "Unauthorized")
 			return
 		}
 
@@ -158,5 +159,23 @@ func refreshHandler(cfg *config.ApiConfig) http.Handler {
 		}
 
 		utils.RespondWithJSON(w, http.StatusOK, resToken{Token: token})
+	})
+}
+
+func revokeHandler(cfg *config.ApiConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		refreshToken, err := auth.GetBearerToken(r.Header)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		_, err = cfg.Queries.RevokeRefreshToken(r.Context(), refreshToken)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusNotFound, "Refresh token not found")
+			return
+		}
+
+		utils.RespondWithJSON(w, http.StatusNoContent, nil)
 	})
 }

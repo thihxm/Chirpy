@@ -50,6 +50,7 @@ func main() {
 	mux.Handle("GET /api/chirps/{chirpID}", getChirpByIDHandler(cfg))
 	mux.Handle("POST /api/login", loginHandler(cfg))
 	mux.Handle("POST /api/refresh", refreshHandler(cfg))
+	mux.Handle("POST /api/revoke", revokeHandler(cfg))
 
 	log.Printf("Server started at %s", server.Addr)
 	log.Fatal(server.ListenAndServe())
