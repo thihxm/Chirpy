@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/thihxm/Chirpy/internal/auth"
 	"github.com/thihxm/Chirpy/internal/config"
 	"github.com/thihxm/Chirpy/internal/database"
 	"github.com/thihxm/Chirpy/internal/utils"
@@ -19,6 +20,11 @@ const (
 
 func polkaWebhookHandler(cfg *config.ApiConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if apiKey, err := auth.GetAPIKey(r.Header); err != nil || apiKey != cfg.PolkaKey {
+			utils.RespondWithError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
 		type parameters struct {
 			Event string `json:"event"`
 			Data  struct {

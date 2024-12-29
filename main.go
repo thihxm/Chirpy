@@ -16,6 +16,7 @@ func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	authSecret := os.Getenv("AUTH_SECRET")
+	polkaKey := os.Getenv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -28,6 +29,7 @@ func main() {
 	cfg := &config.ApiConfig{
 		Queries:    dbQueries,
 		AuthSecret: authSecret,
+		PolkaKey:   polkaKey,
 	}
 
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
