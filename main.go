@@ -56,6 +56,8 @@ func main() {
 	mux.Handle("GET /api/chirps/{chirpID}", getChirpByIDHandler(cfg))
 	mux.Handle("DELETE /api/chirps/{chirpID}", middlewareIsAuthenticated(cfg, deleteChirpByIDHandler(cfg)))
 
+	mux.Handle("POST /api/polka/webhooks", polkaWebhookHandler(cfg))
+
 	log.Printf("Server started at %s", server.Addr)
 	log.Fatal(server.ListenAndServe())
 }
