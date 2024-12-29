@@ -15,6 +15,8 @@ import (
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	authSecret := os.Getenv("AUTH_SECRET")
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
@@ -24,7 +26,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	cfg := &config.ApiConfig{
-		Queries: dbQueries,
+		Queries:    dbQueries,
+		AuthSecret: authSecret,
 	}
 
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +45,7 @@ func main() {
 	}
 
 	mux.Handle("POST /api/users", createUserHandler(cfg))
-	mux.Handle("POST /api/chirps", createChirpHandler(cfg))
+	mux.Handle("POST /api/chirps", middlewareIsAuthenticated(cfg, createChirpHandler(cfg)))
 	mux.Handle("GET /api/chirps", getChirpsHandler(cfg))
 	mux.Handle("GET /api/chirps/{chirpID}", getChirpByIDHandler(cfg))
 	mux.Handle("POST /api/login", loginHandler(cfg))

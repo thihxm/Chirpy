@@ -27,8 +27,7 @@ type Chirp struct {
 func createChirpHandler(cfg *config.ApiConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		type parameters struct {
-			Body   string `json:"body"`
-			UserID string `json:"user_id"`
+			Body string `json:"body"`
 		}
 
 		decoder := json.NewDecoder(r.Body)
@@ -45,12 +44,7 @@ func createChirpHandler(cfg *config.ApiConfig) http.Handler {
 			return
 		}
 
-		userID, err := uuid.Parse(params.UserID)
-		if err != nil {
-			log.Printf("Error parsing user ID: %v", err)
-			utils.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
-			return
-		}
+		userID := r.Context().Value(userIDKey).(uuid.UUID)
 
 		chirp, err := cfg.Queries.CreateChirp(r.Context(), database.CreateChirpParams{
 			Body:   utils.RemoveProfanity(params.Body),
