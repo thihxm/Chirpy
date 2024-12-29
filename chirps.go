@@ -97,3 +97,39 @@ func getChirpByIDHandler(cfg *config.ApiConfig) http.Handler {
 		utils.RespondWithJSON(w, http.StatusOK, Chirp(chirp))
 	})
 }
+
+func deleteChirpByIDHandler(cfg *config.ApiConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rawID := r.PathValue("chirpID")
+
+		id, err := uuid.Parse(rawID)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid chirp ID")
+			return
+		}
+
+		userID := r.Context().Value(userIDKey).(uuid.UUID)
+
+		chirp, err := cfg.Queries.GetChirpByID(r.Context(), id)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusNotFound, "Chirp not found")
+			return
+		}
+
+		if chirp.UserID != userID {
+			utils.RespondWithError(w, http.StatusForbidden, "This chirp does not belong to you")
+			return
+		}
+
+		err = cfg.Queries.DeleteChirpByID(r.Context(), database.DeleteChirpByIDParams{
+			ID:     id,
+			UserID: userID,
+		})
+		if err != nil {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Internal Server Error")
+			return
+		}
+
+		utils.RespondWithJSON(w, http.StatusNoContent, nil)
+	})
+}
