@@ -62,7 +62,19 @@ func createChirpHandler(cfg *config.ApiConfig) http.Handler {
 
 func getChirpsHandler(cfg *config.ApiConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rawChirps, err := cfg.Queries.GetChirps(r.Context())
+		queryAuthorID := r.URL.Query().Get("author_id")
+
+		var authorID uuid.NullUUID
+		if queryAuthorID != "" {
+			parsedUUID, err := uuid.Parse(queryAuthorID)
+			if err != nil {
+				utils.RespondWithError(w, http.StatusBadRequest, "Invalid author ID")
+				return
+			}
+			authorID = uuid.NullUUID{UUID: parsedUUID, Valid: true}
+		}
+		rawChirps, err := cfg.Queries.GetChirps(r.Context(), authorID)
+
 		if err != nil {
 			log.Printf("Error getting chirps: %v", err)
 			utils.RespondWithError(w, http.StatusInternalServerError, "Internal Server Error")
