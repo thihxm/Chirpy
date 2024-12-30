@@ -79,11 +79,20 @@ const getChirps = `-- name: GetChirps :many
 SELECT id, created_at, updated_at, body, user_id
 FROM chirps
 WHERE (user_id = $1 OR $1 IS NULL)
-ORDER BY created_at ASC
+ORDER BY CASE 
+    WHEN $2 = 'desc' THEN created_at
+END DESC, CASE 
+    WHEN $2 = 'asc' OR $2 = '' THEN created_at
+END ASC
 `
 
-func (q *Queries) GetChirps(ctx context.Context, authorID uuid.NullUUID) ([]Chirp, error) {
-	rows, err := q.db.QueryContext(ctx, getChirps, authorID)
+type GetChirpsParams struct {
+	AuthorID uuid.NullUUID
+	Sort     interface{}
+}
+
+func (q *Queries) GetChirps(ctx context.Context, arg GetChirpsParams) ([]Chirp, error) {
+	rows, err := q.db.QueryContext(ctx, getChirps, arg.AuthorID, arg.Sort)
 	if err != nil {
 		return nil, err
 	}

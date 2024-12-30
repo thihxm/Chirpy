@@ -63,6 +63,14 @@ func createChirpHandler(cfg *config.ApiConfig) http.Handler {
 func getChirpsHandler(cfg *config.ApiConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		queryAuthorID := r.URL.Query().Get("author_id")
+		querySort := r.URL.Query().Get("sort")
+
+		if querySort != "" && querySort != "asc" && querySort != "desc" {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid sort parameter")
+		}
+		if querySort == "" {
+			querySort = "asc"
+		}
 
 		var authorID uuid.NullUUID
 		if queryAuthorID != "" {
@@ -73,7 +81,10 @@ func getChirpsHandler(cfg *config.ApiConfig) http.Handler {
 			}
 			authorID = uuid.NullUUID{UUID: parsedUUID, Valid: true}
 		}
-		rawChirps, err := cfg.Queries.GetChirps(r.Context(), authorID)
+		rawChirps, err := cfg.Queries.GetChirps(r.Context(), database.GetChirpsParams{
+			AuthorID: authorID,
+			Sort:     querySort,
+		})
 
 		if err != nil {
 			log.Printf("Error getting chirps: %v", err)

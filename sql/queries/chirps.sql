@@ -18,7 +18,11 @@ DELETE FROM chirps;
 SELECT *
 FROM chirps
 WHERE (user_id = sqlc.narg('author_id') OR sqlc.narg('author_id') IS NULL)
-ORDER BY created_at ASC;
+ORDER BY CASE 
+    WHEN sqlc.narg('sort') = 'desc' THEN created_at
+END DESC, CASE 
+    WHEN sqlc.narg('sort') = 'asc' OR sqlc.narg('sort') = '' THEN created_at
+END ASC;
 
 
 -- name: GetChirpByID :one
